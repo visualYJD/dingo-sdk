@@ -40,7 +40,7 @@ void TxnHeartbeatTask::DoAsync() {
     return;
   }
 
-  s = stub.GetTsoProvider()->GenPhysicalTs(2, physical_ts_);
+  s = stub.GetTsoProvider()->GetPhysicalTs(physical_ts_);
   if (!s.ok()) {
     DoAsyncDone(s);
     return;

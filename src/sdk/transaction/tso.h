@@ -15,6 +15,7 @@
 #ifndef DINGODB_SDK_TRANSACTION_TSO_H_
 #define DINGODB_SDK_TRANSACTION_TSO_H_
 
+#include <atomic>
 #include <cstdint>
 #include <memory>
 
@@ -38,6 +39,13 @@ class TsoProvider {
 
   Status GenPhysicalTs(int32_t count, int64_t& physical_ts);
 
+  // Current tso physical time in ms, extrapolated locally from the last
+  // FetchTso anchor. For lock-ttl style deadlines only: monotonic and
+  // bounded-staleness, but NOT a globally unique timestamp — use GenTs for
+  // start_ts/commit_ts. Falls back to a real fetch when the anchor is older
+  // than FLAGS_tso_anchor_max_age_us.
+  Status GetPhysicalTs(int64_t& physical_ts);
+
   void Refresh();
 
  private:
@@ -57,6 +65,13 @@ class TsoProvider {
   int64_t max_logical_{0};
 
   uint64_t last_time_us_{0};
+
+  // physical-time anchor, written on every successful FetchTso (under write
+  // lock), read by GetPhysicalTs (under read lock)
+  int64_t anchor_physical_ms_{0};
+  int64_t anchor_steady_us_{0};
+  // largest physical ever returned; deadlines must never regress
+  std::atomic<int64_t> max_physical_ms_{0};
 };
 
 using TsoProviderSPtr = std::shared_ptr<TsoProvider>;

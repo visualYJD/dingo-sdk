@@ -78,3 +78,5 @@ DEFINE_int64(txn_check_status_interval_ms, 5, "txn check status interval ms");
 
 DEFINE_uint32(stale_period_us, 1000, "stale period us default 1000 us, used for tso provider");
 DEFINE_uint32(tso_batch_size, 256, "tso batch size default 256, used for tso provider");
+DEFINE_uint32(tso_anchor_max_age_us, 60000000,
+              "max age of the physical-time anchor before GetPhysicalTs falls back to a real tso fetch");
