@@ -191,13 +191,21 @@ struct TraceMetrics {
   std::atomic<uint64_t> sleep_time_us{0};
   std::atomic<uint64_t> sleep_count{0};
 
+  // Wall time spent acquiring timestamps from TSO on the transaction critical
+  // path (Begin start_ts, prewrite physical_ts/commit_ts, 2PC commit_ts).
+  // NOTE: the prewrite/commit portion is also contained in the corresponding
+  // sdk_time_us, so tso_time_us overlaps with those metrics.
+  std::atomic<uint64_t> tso_time_us{0};
+  std::atomic<uint64_t> tso_count{0};
+
   std::string ToString() const {
     return fmt::format(
         "total_time_us({}) read({}) prewrite({}) commit({}) "
-        "resolve_lock({}) sleep({} {})",
+        "resolve_lock({}) sleep({} {}) tso({} {})",
         total_time_us.load(std::memory_order_relaxed), read_metric.ToString(), prewrite_metric.ToString(),
         commit_metric.ToString(), resolve_lock_time_us.load(std::memory_order_relaxed),
-        sleep_time_us.load(std::memory_order_relaxed), sleep_count.load(std::memory_order_relaxed));
+        sleep_time_us.load(std::memory_order_relaxed), sleep_count.load(std::memory_order_relaxed),
+        tso_time_us.load(std::memory_order_relaxed), tso_count.load(std::memory_order_relaxed));
   }
 };
 

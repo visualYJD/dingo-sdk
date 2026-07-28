@@ -52,6 +52,9 @@ class Tracker {
 
     std::atomic<uint64_t> sleep_time_us{0};
     std::atomic<uint64_t> sleep_count{0};
+
+    std::atomic<uint64_t> tso_time_us{0};
+    std::atomic<uint64_t> tso_count{0};
   };
 
   void SetTotalTransactionTime() { metrics_.total_transaction_time_us.store(TimestampUs() - start_time_); }
@@ -103,6 +106,13 @@ class Tracker {
 
   void IncrementSleepCount(uint64_t count) { metrics_.sleep_count.fetch_add(count); }
   uint64_t SleepTimeCount() const { return metrics_.sleep_count.load(); }
+
+  void IncrementTsoTime(uint64_t elapsed_time) {
+    metrics_.tso_time_us.fetch_add(elapsed_time);
+    metrics_.tso_count.fetch_add(1);
+  }
+  uint64_t TsoTime() const { return metrics_.tso_time_us.load(); }
+  uint64_t TsoCount() const { return metrics_.tso_count.load(); }
 
  private:
   uint64_t start_time_;

@@ -131,7 +131,9 @@ void TxnPrewriteTask::DoAsync() {
   }
 
   int64_t physical_ts{0};
+  uint64_t tso_start_us = TimestampUs();
   Status status = stub.GetTsoProvider()->GenPhysicalTs(2, physical_ts);
+  txn_impl_->GetTracer()->IncrementTsoTime(TimestampUs() - tso_start_us);
 
   if (!status.ok()) {
     {
@@ -146,7 +148,9 @@ void TxnPrewriteTask::DoAsync() {
 
   int64_t commit_ts{0};
   if (is_one_pc_ || use_async_commit_) {
+    tso_start_us = TimestampUs();
     status = stub.GetTsoProvider()->GenTs(2, commit_ts);
+    txn_impl_->GetTracer()->IncrementTsoTime(TimestampUs() - tso_start_us);
     if (!status.ok()) {
       {
         WriteLockGuard guard(rw_lock_);

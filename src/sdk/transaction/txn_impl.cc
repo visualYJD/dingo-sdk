@@ -58,7 +58,9 @@ TxnImplSPtr TxnImpl::GetSelfPtr() { return std::dynamic_pointer_cast<TxnImpl>(sh
 
 Status TxnImpl::Begin() {
   int64_t start_ts;
+  uint64_t tso_start_us = TimestampUs();
   Status status = stub_.GetTsoProvider()->GenTs(2, start_ts);
+  tracker_->IncrementTsoTime(TimestampUs() - tso_start_us);
   if (status.ok()) {
     state_.store(kActive);
     start_ts_.store(start_ts);
@@ -701,7 +703,9 @@ Status TxnImpl::CommitPrimaryKey() {
     status = task.Run();
     if (status.IsTxnCommitTsExpired()) {
       int64_t commit_ts;
+      uint64_t tso_start_us = TimestampUs();
       Status s = stub_.GetTsoProvider()->GenTs(2, commit_ts);
+      tracker_->IncrementTsoTime(TimestampUs() - tso_start_us);
       if (!s.ok()) {
         DINGO_LOG(ERROR) << fmt::format("[sdk.txn.{}] commit primary key regen ts fail, status({}).", ID(),
                                         s.ToString());
@@ -777,7 +781,10 @@ Status TxnImpl::DoCommit() {
 
   if (commit_ts == 0) {
     // only init once, if commit_ts_ not set, get a new one
-    DINGO_RETURN_NOT_OK(stub_.GetTsoProvider()->GenTs(2, commit_ts));
+    uint64_t tso_start_us = TimestampUs();
+    Status tso_status = stub_.GetTsoProvider()->GenTs(2, commit_ts);
+    tracker_->IncrementTsoTime(TimestampUs() - tso_start_us);
+    DINGO_RETURN_NOT_OK(tso_status);
     commit_ts_.store(commit_ts);
   }
 
@@ -932,6 +939,8 @@ void TxnImpl::GetTraceMetrics(TraceMetrics& metrics) {
   metrics.resolve_lock_time_us = tracker_->ResolveLockSdkTime();
   metrics.sleep_time_us = tracker_->SleepTime();
   metrics.sleep_count = tracker_->SleepTimeCount();
+  metrics.tso_time_us = tracker_->TsoTime();
+  metrics.tso_count = tracker_->TsoCount();
 }
 }  // namespace sdk
 }  // namespace dingodb
