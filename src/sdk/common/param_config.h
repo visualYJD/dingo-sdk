@@ -90,5 +90,6 @@ DECLARE_int64(txn_check_status_interval_ms);
 
 DECLARE_uint32(stale_period_us);
 DECLARE_uint32(tso_batch_size);
+DECLARE_uint32(tso_anchor_max_age_us);
 
 #endif  // DINGODB_SDK_PARAM_CONFIG_H_

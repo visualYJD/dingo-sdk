@@ -132,7 +132,7 @@ void TxnPrewriteTask::DoAsync() {
 
   int64_t physical_ts{0};
   uint64_t tso_start_us = TimestampUs();
-  Status status = stub.GetTsoProvider()->GenPhysicalTs(2, physical_ts);
+  Status status = stub.GetTsoProvider()->GetPhysicalTs(physical_ts);
   txn_impl_->GetTracer()->IncrementTsoTime(TimestampUs() - tso_start_us);
 
   if (!status.ok()) {

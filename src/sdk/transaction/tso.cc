@@ -104,6 +104,31 @@ Status TsoProvider::GenPhysicalTs(int32_t count, int64_t& physical_ts) {
   return status;
 }
 
+static int64_t SteadyUs() {
+  return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch())
+      .count();
+}
+
+Status TsoProvider::GetPhysicalTs(int64_t& physical_ts) {
+  {
+    ReadLockGuard guard(rwlock_);
+    if (anchor_physical_ms_ > 0) {
+      int64_t age_us = SteadyUs() - anchor_steady_us_;
+      if (age_us >= 0 && age_us < FLAGS_tso_anchor_max_age_us) {
+        int64_t est = anchor_physical_ms_ + age_us / 1000;
+        int64_t prev = max_physical_ms_.load(std::memory_order_relaxed);
+        while (est > prev && !max_physical_ms_.compare_exchange_weak(prev, est)) {
+        }
+        physical_ts = est > prev ? est : prev;
+        return Status::OK();
+      }
+    }
+  }
+
+  // no anchor yet or anchor too old: re-anchor with a real fetch
+  return GenPhysicalTs(2, physical_ts);
+}
+
 void TsoProvider::Refresh() {
   last_time_us_ = TimestampUs();
   physical_ = 0;
@@ -137,6 +162,9 @@ Status TsoProvider::FetchTso(uint32_t count) {
   physical_ = tso.physical();
   next_logical_ = tso.logical();
   max_logical_ = next_logical_ + ts_count - 1;
+
+  anchor_physical_ms_ = tso.physical();
+  anchor_steady_us_ = SteadyUs();
 
   DINGO_LOG(DEBUG) << fmt::format("[sdk.tso] fetch tso ts({}) count({}).", Tso2Timestamp(tso), ts_count);
 
